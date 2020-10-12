@@ -1,0 +1,80 @@
+version: "3"
+
+services:
+  webserver:
+    build: 
+      context: ./bin/webserver
+    container_name: 'webserver'
+    restart: 'always'
+    ports:
+      - "80:80"
+      - "443:443"
+    networks: 
+      - consul_net
+    depends_on:
+      - mysql
+      - redis
+      - redis1
+      - mailserver
+    volumes: 
+      - ${DOCUMENT_ROOT-./walls.com}:/var/www/html
+      - ${PHP_INI-./config/php/php.ini}:/usr/local/etc/php/php.ini
+      - ${VHOSTS_DIR-./config/vhosts}:/etc/apache2/sites-enabled
+      - ${LOG_DIR-./logs/apache2}:/var/log/apache2
+  mysql:
+    build: ./bin/mysql
+    container_name: 'mysql'
+    restart: 'always'
+    ports:
+      - "3306:3306"
+    volumes: 
+      - ${MYSQL_DATA_DIR-./data/mysql}:/var/lib/mysql
+      - ${MYSQL_LOG_DIR-./logs/mysql}:/var/log/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: tiger
+    networks:
+      - consul_net
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: 'phpmyadmin'
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+    ports:
+      - '8080:80'
+    volumes: 
+      - /sessions
+    networks:
+      - consul_net
+
+  redis:
+    container_name: 'redis'
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    networks:
+      - consul_net
+
+  redis1:
+    container_name: 'redis1'
+    image: redis:latest
+    ports:
+      - "6380:6380"
+    networks:
+      - consul_net
+
+  mailserver:
+    container_name: 'mailserver'
+    image: mailhog/mailhog:latest
+    restart: always
+    ports:
+      - "8081:8025"
+      - "1025:1025"
+    networks:
+      - consul_net
+
+networks:
+  consul_net:
