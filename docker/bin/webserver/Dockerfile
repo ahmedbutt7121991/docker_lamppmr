@@ -73,3 +73,11 @@ RUN a2enmod rewrite headers
 RUN wget https://github.com/mailhog/mhsendmail/releases/download/v0.2.0/mhsendmail_linux_amd64
 RUN chmod +x mhsendmail_linux_amd64
 RUN mv mhsendmail_linux_amd64 /usr/local/bin/mhsendmail
+
+# Setting up tool for sending Mails from Mailgun
+RUN apt-get install ssmtp -y
+#Setting Up Swaks
+RUN curl http://www.jetmore.org/john/code/swaks/files/swaks-20130209.0/swaks -o swaks
+RUN chmod +x swaks
+RUN mv swaks /usr/sbin/swaks
+RUN apt-get -y install perl
