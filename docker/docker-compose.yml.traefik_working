@@ -1,0 +1,132 @@
+version: "3"
+
+services:
+  traefik:
+    image: "traefik:v2.3"
+    container_name: "traefik"
+    command:
+      #- "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - consul_net
+
+
+  webserver1:
+    build: 
+      context: ./bin/webserver
+    container_name: 'webserver1'
+    restart: 'always'
+    # ports:
+    #   - "80:80"
+    #   - "443:443"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.webserver1.rule=Host(`walls.com`)"
+      - "traefik.http.routers.webserver1.entrypoints=web"
+    networks: 
+      - consul_net
+    depends_on:
+      - mysql
+      - redis
+      - redis1
+      # - mailserver
+    volumes: 
+      - ${DOCUMENT_ROOT-./walls.com}:/var/www/html
+      - ${PHP_INI-./config/php/php.ini}:/usr/local/etc/php/php.ini
+      - ${VHOSTS_DIR-./config/vhosts}:/etc/apache2/sites-enabled
+      - ${LOG_DIR-./logs/apache2}:/var/log/apache2
+      - ${SMTP_CONF-./config/smtp/ssmtp.conf}:/etc/ssmtp/ssmtp.conf
+      - ${PHP_MAIL-./config/mail/phpmail.php}:/var/www/html/phpmail.php
+
+  webserver2:
+    build: 
+      context: ./bin/webserver
+    container_name: 'webserver2'
+    restart: 'always'
+    # ports:
+    #   - "80:80"
+    #   - "443:443"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.webserver2.rule=Host(`example.com`)"
+      - "traefik.http.routers.webserver2.entrypoints=web"
+    networks: 
+      - consul_net
+    depends_on:
+      - mysql
+      - redis
+      - redis1
+      # - mailserver
+    volumes: 
+      - ${DOCUMENT_ROOT-./example.com}:/var/www/html
+      - ${PHP_INI-./config/php/php.ini}:/usr/local/etc/php/php.ini
+      - ${VHOSTS_DIR-./config/vhosts}:/etc/apache2/sites-enabled
+      - ${LOG_DIR-./logs/apache2}:/var/log/apache2
+      - ${SMTP_CONF-./config/smtp/ssmtp.conf}:/etc/ssmtp/ssmtp.conf
+      - ${PHP_MAIL-./config/mail/phpmail.php}:/var/www/html/phpmail.php
+
+  mysql:
+    build: ./bin/mysql
+    container_name: 'mysql'
+    restart: 'always'
+    ports:
+      - "3306:3306"
+    volumes: 
+      - ${MYSQL_DATA_DIR-./data/mysql}:/var/lib/mysql
+      - ${MYSQL_LOG_DIR-./logs/mysql}:/var/log/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: tiger
+    networks:
+      - consul_net
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: 'phpmyadmin'
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+    ports:
+      - '8081:80'
+    volumes: 
+      - /sessions
+    networks:
+      - consul_net
+
+  redis:
+    container_name: 'redis'
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    networks:
+      - consul_net
+
+  redis1:
+    container_name: 'redis1'
+    image: redis:latest
+    ports:
+      - "6380:6380"
+    networks:
+      - consul_net
+
+  # mailserver:
+  #   container_name: 'mailserver'
+  #   image: mailhog/mailhog:latest
+  #   restart: always
+  #   ports:
+  #     - "8081:8025"
+  #     - "1025:1025"
+  #   networks:
+  #     - consul_net
+
+networks:
+  consul_net:
